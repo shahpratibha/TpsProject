@@ -16,19 +16,6 @@ $user = mysqli_fetch_assoc($result);
 
 $userN = $_SESSION['username'];
 
-
-// -----------------
-// $sql = "SELECT * FROM locations  WHERE username = '$username'";
-// $result = $db->query($sql);
-
-// $locations = array();
-
-// if ($result->num_rows > 0) {
-//     while ($row = $result->fetch_assoc()) {
-//         $locations[] = $row;
-//     }
-// }
-
 //  ===================================================for database connection for search engine================================================
 
 if ($db->connect_error) {
@@ -52,10 +39,43 @@ if ($result->num_rows > 0) {
     }
 }
 
-// echo json_encode($data);
-// $conn->close();
-//  ===================================================for database connection for search engine================================================
+// pgsql connection 
 
+
+
+// Create connection
+$conn = pg_connect("host =database-1.c01x1jtcm1ms.ap-south-1.rds.amazonaws.com port = 5432 dbname = pmcdb user = postgres password = anup12345");
+
+// Check connection
+if (!$conn) {
+    die("Connection failed: " . pg_last_error());
+}
+
+$tableName = "Man_Final";
+$columnsQuery = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '$tableName' 
+AND COLUMN_NAME NOT IN ('fid', 'geom','Shape_Leng')";
+$columnsResult = pg_query($conn, $columnsQuery);
+
+if (!$columnsResult) {
+    die("Error fetching columns: " . pg_last_error($conn));
+}
+
+$dataQuery = 'SELECT "OBJECTID", "Area_Ha", "Area_acre", "Length_m","Area_Sq_m","Village","Old_Gut","TALUKA","Broad_LU","Label_name","Landuse","Plot_no" FROM "Man_Final"';
+$dataResult = pg_query($conn, $dataQuery);
+
+
+
+// fetch and zoom data on the map
+// $preparedQuery = 'SELECT * FROM "Man_Final"';
+// $stmt = pg_query($conn, $preparedQuery);
+
+// $Man_Final = array();
+
+// if (pg_num_rows($result) > 0) {
+//     while ($row = pg_fetch_assoc($result)) {
+//         $Man_Final[] = $row;
+//     }
+// }
 
 
 ?>
@@ -94,6 +114,8 @@ if ($result->num_rows > 0) {
     <link rel="stylesheet" href="libs/jquery-ui-1.12.1/jquery-ui.css">
     <script src="libs/jquery-ui-1.12.1/external/jquery/jquery.js"></script>
     <script src="libs/jquery-ui-1.12.1/jquery-ui.js"></script>
+<!-- qrcode -->
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
 
     <!-- Leaflet -->
 
@@ -159,28 +181,18 @@ if ($result->num_rows > 0) {
     <!-- fontawsome -->
     <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css">
 
-    <!-- json -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-    <!-- <script>
-    $(function() {
-        var availableTags = ['113-B', '12 m', '12 m', '15 m', '18 m', '186', '187', '188', '189', '190', '191', '192', '193', '194', '195', '196', '197-A', '197-B', '198', '199', '200', '201', "201-A", '202-A','203', '204', '204-A', '205', '206', '208', '209', '210', '211', '212', '213-A', '213-B', '213-C', '213-D', '214', '214-A', '215', '216', '217', '219', '220', '221', '222', '223', '224', '225', '228', '229', '230-A', '230-B', '231', '233', '234-A', '234-B', '235', '236', '236', '237-A', '237-B', '238', '239', '240', '241', '242', '243', '244', '245', '246', '247', '248', '248-A', '249', '249-A', '250', '250-A', '250-B', '251', '252-A', '252-B', '252-C', '253-A', '253-B', '254', '255', '256', '257', '258', '259', '260', '261-A', '261-B', '262', '263-A', '264', '265', '266', '267', '268', '269', '269-A', '271', '272', '272', '272-A', '274', '274', '275-A', '275-B', '275-C', '276', '277', '278-B', '281', '281-A', '284', '287', '288', '291', '292', '293', '294', '296', '297', '298', '299', '3', '30 m', '30 m', '300', '301', '302', '303', '304', '306', '307', '308', '313-B', '313-C', '319', '333', '334', '335', '336', '337', '338', '339', '340', '341', '342', '342-A', '345', '346', '347-A', '347-B', '349', '351', '352-A', '352-B', '354', '355', '356-A', '357', '358', '359', '36 m', '36 m', '360', '363', '364', '365', '366', '367', '368', '368-A', '369', '370', '371', '374', '378-A', '379', '379-A', '385-B', '386', '386-A', '388', '397', '398 B.S-6', '404', '407', 'EWS/LIG/DP-13', 'EWS/LIG/DP-14'
-
-        ];
-        $(".search").autocomplete({
-            source: availableTags
-        });
-    });
-    </script> -->
-
-
-    <!--Bookmarks-->
-
-    <!-- <script src="libs/bookmark.js"></script> -->
-    <!-- <link href="libs/leaflet.bookmark.css" rel="stylesheet"> -->
+  <!-- QRcode -->
+  <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
 
     <style>
     /* CSS Styles for the Location Table */
-
+    #ui-id-1{
+        height: 70vh;
+        width:25%;
+        overflow-y:scroll;
+    }
     #locationTable {
         width: 100%;
         border-collapse: collapse;
@@ -256,10 +268,104 @@ if ($result->num_rows > 0) {
             font-size: 15px;
             color: #004aad;
         }
+
+   /* ////////////modal table */
+
+ /* table  */
+        .content-container {
+                    width: 100%;
+                    padding:5px 0%;
+                    
+        }
+        .table-container {
+            background-color:white;
+            box-shadow: 10px 10px 8px rgba(0, 0, 0, 0.1);
+    
+            max-width: 100%;
+            max-height: 400px; /* Set a fixed height for the container */
+            overflow-y: auto; /* Enable vertical scrolling */
+        }
+        table {
+           
+            width: 100%; /* Make the table fill the container */
+            border-collapse: collapse;
+        }
+        th {
+            
+            background-color: #343a40; /* Header background color */
+            color: #ffffff; /* Header text color */
+            cursor: pointer;
+            height: 40px; 
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        th:hover {
+            background-color: #343a4070; /* Header background color on hover */
+        }
+
+
+        #tabmodal{
+        
+        background-color: white;
+
+        color: black;
+        padding: 5px 10px;
+        border: #bbb 2px solid;
+        border-radius:3px ;
+        cursor: pointer;
+        
+        
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 60vh;
+            left: 16%;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            /* background-color: #fefefe; */
+            background-color:#dddddd;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 85%;
+            max-height: 80%;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 5px;
+        }
+
+        .close {
+            color: red;
+            float: right;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            position: absolute;
+            top:-10px; 
+            right: 40px;
+            z-index: 1; 
+        }
+
+        .close:hover {
+            color: black;
+        }
+
+
+           /* Style to reduce map size */
+           #map.collapsed {
+            height: 50vh; /* Set the height you desire when collapsed */
+            transition: height 0.5s ease;
+        }    
     </style>
 </head>
 
-<body>
+<body class="overflow-hidden">
     <div id="wrapper">
 
         <aside id="sidebar-wrapper">
@@ -284,6 +390,23 @@ if ($result->num_rows > 0) {
                     </p>
 
                 </li>
+
+
+
+                <li>
+                    <!-- <div class=""> -->
+                        <a class="fs-6 px-3" style="color:#dddddd;" href="index.php"><i class="fa-solid fa-house"></i>   Dashboard</a>
+                    <!-- </div> -->
+                </li>
+
+                <li>
+                    <!-- <div class=""> -->
+                        <a class="fs-6 px-3" style="color:#dddddd;" href="chart.php"><i class="fas fa-chart-line"></i>   Statistics </a>
+                    <!-- </div> -->
+                </li>
+
+                <hr class="text-light mx-3">
+
                 <li>
                     <!-- *************************prompt ************** -->
 
@@ -296,8 +419,7 @@ if ($result->num_rows > 0) {
                             Bookmarks
                         </button>
                         <ul class="dropdown-menu ms-1 px-2 bg-transparent" aria-labelledby="locationDropdown" >
-                            <p type="button" class="text-light" style="font-size:12px;" id="saveBtn">Create Bookmark <i
-                                    class="far fa-plus-circle"></i>
+                            <p type="button" class="text-light" style="font-size:12px;" id="saveBtn">Create Bookmark <i class="fas fa-plus-square"></i>
                             </p>
                             <div class="table-wrapper">
                                 <table id="locationTable">
@@ -349,22 +471,59 @@ if ($result->num_rows > 0) {
                 <div class="main_search">
                     <input type="text" placeholder="Search.." name="search2" class="search">
 
-                    <button class="bg-light" id="btnData2" type="button" onclick="SearchMe(); sendData()"><i
-                            class="far fa-search"></i></button>
+                    <button class="bg-light" id="btnData2" type="button" onclick="SearchMe(); sendData()"><i class="fas fa-search"></i></button>
 
                     <button class="btn-success" id="btnData1" type="button" onclick="ClearMe()">Clear</button>
 
 
                     <button onclick="takeScreenshot()" id="save-btn" class="text-light border-0 "
                         style="background:#004aad;    "><i class="fas fa-download"></i></button>
-                    <!-- <button >Export Map</button> -->
+                    <!-- modal -->
+                    <button id="tabmodal" onclick="openModal()"><i class="fa-solid fa-table-columns"></i></button>
 
                 </div>
-                <!-- <i class="fad fa-user fs-3 " ></i>
-    <p class="username" onclick="openNav()">
-        <?php echo $_SESSION['username']; ?>
-    </p> -->
+                <div id="myModal" class="modal">
+                        <div class="modal-content">
+                        <span class="close" onclick="closeModal()">&times;</span>
+                       
+                            <div class="content-container">
+                            
+                                <div class="table-container">
+                            <table border="1">
+                            <tr>
+                            <?php
+                            // Output column names dynamically
+                            while ($column = pg_fetch_assoc($columnsResult)) {
+                                $columnName = $column['column_name'];
+                                echo "<th onclick='sortTable(\"$columnName\")'>$columnName</th>";
+                            }
+                            ?>
+                            </tr>
 
+                            <?php
+                            // Output data from rows if $dataResult is valid
+                            if ($dataResult) {
+                            while ($row = pg_fetch_assoc($dataResult)) {
+                                echo "<tr>";
+                                foreach ($row as $value) {
+                                    echo "<td>" . $value . "</td>";
+                                }
+                                echo "</tr>";
+                            }
+                            } else {
+                            echo "<tr><td colspan='100%'>No data available</td></tr>";
+                            }
+                            ?>
+                            </table>
+                            </div>
+
+
+
+                        </div>
+
+       
+                        </div>
+                </div>
             </div>
         </section>
 
@@ -431,6 +590,7 @@ var wms_layer = L.tileLayer.wms(
     transparent: true,
     version: "1.1.0",
     attribution: "Man_Final",
+    tiled:true,
     maxZoom: "28",
   }
 );
@@ -441,6 +601,7 @@ var wms_layer1 = L.tileLayer.wms(
     format: "image/png",
     transparent: true,
     version: "1.1.0",
+    tiled:true,
     attribution: "Man_Final",
     maxZoom: "28",
   }
@@ -481,8 +642,7 @@ var control = new L.control.layers(baseLayers, WMSlayers).addTo(map);
         let urrr =
             `https://portal.geopulsea.com/geoserver/Man/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetFeatureInfo&FORMAT=image%2Fpng&TRANSPARENT=true&QUERY_LAYERS=${layer}&STYLES&LAYERS=${layer}&exceptions=application%2Fvnd.ogc.se_inimage&INFO_FORMAT=application/json&FEATURE_COUNT=50&X=${Math.round(e.containerPoint.x)}&Y=${Math.round(e.containerPoint.y)}&SRS=EPSG%3A4326&WIDTH=${size.x}&HEIGHT=${size.y}&BBOX=${bbox}`
 
-        // you can use this url for further processing such as fetching data from server or showing it on the map
-
+       
         if (urrr) {
             fetch(urrr)
 
@@ -505,7 +665,7 @@ var control = new L.control.layers(baseLayers, WMSlayers).addTo(map);
                         }
                        
                     }
-                    console.log(finalOwnerName,"finalOwnerName")
+                    // console.log(finalOwnerName,"finalOwnerName")
                     let txtk1 = "";
                     var xx = 0
                     for (let gb in keys) {
@@ -571,34 +731,37 @@ if (urrr) {
                             <kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
                             <Document>
                                 <name>UPolygon.kml</name>
+                                <Style id="failed">
+                                    <LineStyle>
+                                        <color>ff00ffaa</color>
+                                        <width>5</width>
+                                    </LineStyle>
+                                    <PolyStyle>
+                                        <color>ff00ffaa</color>
+                                        <fill>0</fill>
+                                    </PolyStyle>
+                                </Style>
+                                <Style id="failed0">
+                                    <LineStyle>
+                                        <color>ff00ffaa</color>
+                                        <width>5</width>
+                                    </LineStyle>
+                                    <PolyStyle>
+                                        <color>ff00ffaa</color>
+                                        <fill>0</fill>
+                                    </PolyStyle>
+                                </Style>
                                 <StyleMap id="m_ylw-pushpin">
                                     <Pair>
                                         <key>normal</key>
-                                        <styleUrl>#s_ylw-pushpin</styleUrl>
+                                        <styleUrl>#failed0</styleUrl>
                                     </Pair>
                                     <Pair>
                                         <key>highlight</key>
-                                        <styleUrl>#s_ylw-pushpin_hl</styleUrl>
+                                        <styleUrl>#failed</styleUrl>
                                     </Pair>
                                 </StyleMap>
-                                <Style id="s_ylw-pushpin">
-                                    <IconStyle>
-                                        <scale>1.1</scale>
-                                        <Icon>
-                                            <href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
-                                        </Icon>n
-                                        <hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
-                                    </IconStyle>
-                                </Style>
-                                <Style id="s_ylw-pushpin_hl">
-                                    <IconStyle>
-                                        <scale>1.3</scale>
-                                        <Icon>
-                                            <href>http://maps.google.com/mapfiles/kml/pushpin/ylw-pushpin.png</href>
-                                        </Icon>
-                                        <hotSpot x="20" y="2" xunits="pixels" yunits="pixels"/>
-                                    </IconStyle>
-                                </Style>
+
                                 <Placemark>
                                     <name>Untitled Polygon</name>
                                     <styleUrl>#m_ylw-pushpin</styleUrl>
@@ -619,8 +782,7 @@ if (urrr) {
             }
             var kmlContent = generateKML(geometryType, coordinatesWithAltitude);
 
-            // console.log(kmlContent);
-
+          
             var ssDownload = document.createElement('a');
             ssDownload.href = 'data:application/vnd.google-earth.kml+xml;charset=utf-8,' + encodeURIComponent(kmlContent);
             ssDownload.download = 'polygon.kml';
@@ -674,11 +836,11 @@ if (urrr) {
                 shapeOptions: {
                     dashArray: '2, 5',
                     color: 'red'
-
+   
                 }
             },
 
-            polyline: {
+            polyline: {     
                 allowIntersection: true, // Restricts shapes to simple polylines
                 shapeOptions: {
                     dashArray: '2, 5',
@@ -723,6 +885,7 @@ $(document).ready(function () {
                
                 var layer = 'Man_Final'
 
+            
                 function generateImageURL(callback) {
                 var urlm = "https://portal.geopulsea.com/geoserver/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=" +
                         layer + "&CQL_FILTER=" + sql_filter1 + "&outputFormat=application/json";
@@ -747,7 +910,7 @@ if (bboxArray.length === 4) {
     let bboxx = bboxArray.join(',');
 
     var ulpng = "https://portal.geopulsea.com/geoserver/Man/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=true&STYLES&LAYERS=Man%3AMan_Final&exceptions=application%2Fvnd.ogc.se_inimage&CQL_FILTER="+sql_filter1+"&SRS=EPSG%3A4326&WIDTH=769&HEIGHT=460&BBOX=" + bboxx;
-    console.log(ulpng)
+    // console.log(ulpng)
     // Create an image element
 
     callback(ulpng);
@@ -763,12 +926,12 @@ if (bboxArray.length === 4) {
     //             var ulpng = "https://portal.geopulsea.com/geoserver/Man/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&FORMAT=image%2Fpng&TRANSPARENT=true&STYLES&LAYERS=Man%3AMan_Final&exceptions=application%2Fvnd.ogc.se_inimage&CQL_FILTER=Plot_no%09like%20%27150%27&SRS=EPSG%3A4326&WIDTH=769&HEIGHT=460&BBOX="+bboxx;
     //             console.log(ulpng, plotNumber)
    generateImageURL(function (url) {
-    console.log("Returned URL:", url);
+    // console.log("Returned URL:", url);
     var ulpng = url
     // You can use the URL here or pass it to another function
 
 
-console.log(ulpng,"{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{")
+// console.log(ulpng,"{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{")
                 var selectedData = data.find(function (item) {
                     return item.FinalPlotNumber.trim() === plotNumber.trim();
                 });
@@ -797,10 +960,10 @@ console.log(ulpng,"{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{")
                     var currentData = selectedData1[0];
                     // console.log(currentData,"{{{{{{{{{{{{{{{}}}}}}}}}}}}}}}")
                     Owners = currentData.Owners.replace(/\n/g, '<br>');
-                    console.log(Owners,"LLLLLLLLLLLLLL");
+                    // console.log(Owners,"LLLLLLLLLLLLLL");
                     ownersHTML += '<tr style="width: 10%; align="center"><td>' + Owners + '</td><td><b>क्षेत्र  :  ' + currentData.FinalPlotArea + ' चौ.मी.</b></td></tr>'
                     
-                    console.log(ownersHTML,"KKKKKKKKKK");
+                    // console.log(ownersHTML,"KKKKKKKKKK");
                     return ownersHTML
                 }
                 
@@ -808,11 +971,11 @@ console.log(ulpng,"{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{")
                 // console.log(selectedData1.length, selectedData1.Owners,";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;,")
                 if (selectedData) {
                     // Display the selected data
-                    console.log(selectedData.FinalPlotNumber,forMultipleOwners(selectedData1),selectedData.TotalFinalPlotArea,selectedData.tenure,selectedData.OwnershipRights,ulpng,"tttttttttttttttttttttt")
+                    // console.log(selectedData.FinalPlotNumber,forMultipleOwners(selectedData1),selectedData.TotalFinalPlotArea,selectedData.tenure,selectedData.OwnershipRights,ulpng,"tttttttttttttttttttttt")
 
                     var  bb = create_html(selectedData.FinalPlotNumber,forMultipleOwners(selectedData1),selectedData.TotalFinalPlotArea,selectedData.tenure,selectedData.OwnershipRights,ulpng)
                     
-                    console.log(bb,"hhhhhhkkkkkkkkkkkk")
+                    // console.log(bb,"hhhhhhkkkkkkkkkkkk")
                     var blob = new Blob([bb], { type: 'text/html' });
 
                     // Create a download link
@@ -823,7 +986,7 @@ console.log(ulpng,"{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{")
 
                 } else {
                     // Handle case when plot number is not found
-                    console.log('Plot number not found');
+                    // console.log('Plot number not found');
                 }
         });
         
@@ -894,7 +1057,8 @@ function create_html(plotNumber,owners,TotalFinalPlotArea,tenure,OwnershipRights
 <td border="1" bordercolor="black" colspan="100%;"><b>इतर भार               :    </b></td>
 </tr>
 <tr><td>
-<img src="${url}" alt="Map Image" style="width: 100%; height: auto; padding:0;">
+<img src="${url}" alt="Map Image" id="imageurl" style="width: 100%; height: auto; padding:0;">
+
 </td></tr>
 <tr align="left">
 <td colspan="6" id="plot_other">
@@ -930,17 +1094,31 @@ function create_html(plotNumber,owners,TotalFinalPlotArea,tenure,OwnershipRights
 <td><center> </center></td>
 <td colspan="2"> </td>
 </tr>
-</table>
+<tr><td><div  id="qr_code"></div>
 
+    // var imageUrl = "${url}";
+    //     var qrcode = new QRCode(document.getElementById("qr_code"), {
+    //       text: imageUrl,
+    //       width: 128,
+    //       height: 128,
+    //     });
+
+</td></tr>
+
+</table>
 
 </body>
 </html>
-`
+`;
+
+
+  console.log(url,"urlcreated");
+
 
 return htmls
 }
 
-
+    
 "=========================================================for kml saving from shantaram  end ================================================================="
 
 
@@ -1093,20 +1271,20 @@ return htmls
             array.forEach(function(element) {
                 var numbers = element.match(/\b\d+\s*[A-Za-z]?\b|\b\d+\b/g);
                 if (numbers !== null) {
-                    console.log("Matched:", numbers[0]);
-                    console.log("Matched:", numbers.length);
+                    // console.log("Matched:", numbers[0]);
+                    // console.log("Matched:", numbers.length);
                     arrrr = numbers[0];
                 } else {
-                    console.log("No match for:", element);
+                    // console.log("No match for:", element);
                 }
       
             });
-            console.log("first try========", arrrr);
+            // console.log("first try========", arrrr);
             if (array.length == 1) {
             var sql_filter1 = "	Plot_no Like '" + arrrr + "'"
-            console.log(sql_filter1,"filtrrff")
+            // console.log(sql_filter1,"filtrrff")
             fitbou(sql_filter1)
-            console.log(fitbou,"jjjjjjjj");
+            // console.log(fitbou,"jjjjjjjj");
             wms_layer1.setParams({
                 cql_filter: sql_filter1,
                 styles: 'highlight',
@@ -1114,7 +1292,7 @@ return htmls
             wms_layer1.addTo(map).bringToFront();
             } else {
             
-            console.log("Search using plot number only. Ignoring additional parameters.");
+            // console.log("Search using plot number only. Ignoring additional parameters.");
             }
 
     }
@@ -1139,18 +1317,58 @@ return htmls
 
 //------------------------autosearch-----------------
     
-    $(document).ready(function () {
-        var data = <?php echo json_encode($data); ?>;
+   // $(document).ready(function () {
+      //  var data = <?php echo json_encode($data); ?>;
 
-        $(".search").autocomplete({
-            source: data.map(function (item) {
+      //  $(".search").autocomplete({
+        //    source: data.map(function (item) {
                 // console.log(item.Owners,"mypiu")
-                return item.FinalPlotNumber + ' ' + item.Owners;
-            })
-        });
+            //    return item.FinalPlotNumber + ' ' + item.Owners;
+           // })
+       // });
 
     
+   // });
+
+
+    
+   $(document).ready(function () {
+
+var data = <?php echo json_encode($data, JSON_NUMERIC_CHECK); ?>;
+
+$(".search").autocomplete({
+source: function(request, response) {
+var userInput = request.term;
+
+// Use Sets to track unique values
+var uniqueFinalPlotNumbers = new Set();
+var uniqueCombinedValues = new Set();
+
+// Check if the user input starts with a number from 1-9
+if (/^[1-9]/.test(userInput)) {
+    // Filter and add unique FinalPlotNumbers
+    data.forEach(function(item) {
+        if (item.FinalPlotNumber.toString().startsWith(userInput)) {
+            uniqueFinalPlotNumbers.add(item.FinalPlotNumber.toString());
+        }
     });
+
+    response(Array.from(uniqueFinalPlotNumbers));
+} else {
+    // Filter and add unique combined values
+    data.forEach(function(item) {
+        // Adjust this condition based on your Marathi string detection logic
+        if (item.Owners.toLowerCase().includes(userInput.toLowerCase())) {
+            var combinedValue = item.FinalPlotNumber + ' ' + item.Owners;
+            uniqueCombinedValues.add(combinedValue);
+        }
+    });
+
+    response(Array.from(uniqueCombinedValues));
+}
+}
+});
+   });    
 
 
 
@@ -1367,10 +1585,50 @@ return htmls
 
 
     function zoomToLocation(latitude, longitude) {
-        map.flyTo([latitude, longitude], 15);
+        map.flyTo([latitude, longitude], 21);
     }
     // Load table on page load
     loadLocationTable();
+
+
+
+    //modal
+
+
+    // function openModal() {
+        // document.getElementById('myModal').style.display = 'flex';
+        
+    // }
+
+    // function closeModal() {
+        // document.getElementById('myModal').style.display = 'none';
+    // }
+
+
+    function openModal() {
+        // Get the map element
+        var map = document.getElementById('map');
+
+        // Collapse the map by adding the 'collapsed' class
+        map.classList.add('collapsed');
+
+        // Display the modal
+        document.getElementById('myModal').style.display = 'block';
+    }
+
+    function closeModal() {
+        // Get the map element
+        var map = document.getElementById('map');
+
+        // Remove the 'collapsed' class to restore the map size
+        map.classList.remove('collapsed');
+
+        // Close the modal
+        document.getElementById('myModal').style.display = 'none';
+    }
+
+
+
 
     </script>
 
