@@ -60,8 +60,9 @@ if (!$columnsResult) {
     die("Error fetching columns: " . pg_last_error($conn));
 }
 
-$dataQuery = 'SELECT "OBJECTID", "Area_Ha", "Area_acre", "Length_m","Area_Sq_m","Village","Old_Gut","TALUKA","Broad_LU","Label_name","Landuse","Plot_no" FROM "Man_Final"';
+$dataQuery = 'SELECT "OBJECTID", "Area_Ha", "Area_acre", "Length_m","Area_Sq_m","Village","Old_Gut","Label_name","TALUKA","Broad_LU","Landuse","Plot_no" FROM "Man_Final"';
 $dataResult = pg_query($conn, $dataQuery);
+
 
 
 
@@ -361,7 +362,12 @@ $dataResult = pg_query($conn, $dataQuery);
            #map.collapsed {
             height: 50vh; /* Set the height you desire when collapsed */
             transition: height 0.5s ease;
-        }    
+        } 
+        
+        .fa-icon {
+            color: #004aad; /* Marker color */
+            font-size: 20px; /* Marker size */
+        }
     </style>
 </head>
 
@@ -503,17 +509,18 @@ $dataResult = pg_query($conn, $dataQuery);
                             <?php
                             // Output data from rows if $dataResult is valid
                             if ($dataResult) {
-                            while ($row = pg_fetch_assoc($dataResult)) {
-                                echo "<tr>";
-                                foreach ($row as $value) {
-                                    echo "<td>" . $value . "</td>";
+                                while ($row = pg_fetch_assoc($dataResult)) {
+                                    echo "<tr id='row-" . $row['OBJECTID'] . "' onclick='updateMap(" . $row['OBJECTID'] . ")'>";
+                                    foreach ($row as $value) {
+                                        echo "<td>" . $value . "</td>";
+                                    }
+                                    echo "</tr>";
                                 }
-                                echo "</tr>";
-                            }
                             } else {
-                            echo "<tr><td colspan='100%'>No data available</td></tr>";
+                                echo "<tr><td colspan='100%'>No data available</td></tr>";
                             }
                             ?>
+   
                             </table>
                             </div>
 
@@ -1594,15 +1601,64 @@ if (/^[1-9]/.test(userInput)) {
 
     //modal
 
+//     function updateMap(row) {
+//         // Fetch the coordinates or other location information for the clicked row
+//         // You need to adjust this part based on your data structure
+//         var lat =parseFloat(row['Latitude']); // Extract latitude from the clicked row
+//         var lon = parseFloat(row['Longitude']);// Extract longitude from the clicked row
 
-    // function openModal() {
-        // document.getElementById('myModal').style.display = 'flex';
-        
-    // }
+//         // Check if lat and lon are valid numbers
+//     if (!isNaN(lat) && !isNaN(lon)) {
+//         // Clear previous markers, if any
+//         map.eachLayer(function (layer) {
+//             if (layer instanceof L.Marker) {
+//                 map.removeLayer(layer);
+//             }
+//         });
 
-    // function closeModal() {
-        // document.getElementById('myModal').style.display = 'none';
-    // }
+//         // Add a marker to the map at the clicked location with a Font Awesome icon
+//         var marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'fa-icon', html: '<i class="fas fa-map-marker-alt"></i>' }) }).addTo(map);
+
+//         // You may also want to pan or zoom to the clicked location
+//         map.setView([lat, lon], 17);
+//     } else {
+//         console.error('Invalid or missing latitude and longitude values.');
+//     }
+// }
+
+function updateMap(row) {
+    // Extract GeoJSON from the row data
+    var geoJSON = row['geom']; // Replace 'geom' with your actual column name
+
+    try {
+        // Parse the GeoJSON to get the coordinates
+        var parsedGeoJSON = JSON.parse(geoJSON);
+
+        // Extract latitude and longitude from the coordinates
+        var lat = parseFloat(parsedGeoJSON.coordinates[1]);
+        var lon = parseFloat(parsedGeoJSON.coordinates[0]);
+
+        // Check if lat and lon are valid numbers
+        if (!isNaN(lat) && !isNaN(lon)) {
+            // Clear previous markers, if any
+            map.eachLayer(function (layer) {
+                if (layer instanceof L.Marker) {
+                    map.removeLayer(layer);
+                }
+            });
+
+            // Add a marker to the map at the clicked location with a Font Awesome icon
+            var marker = L.marker([lat, lon], { icon: L.divIcon({ className: 'fa-icon', html: '<i class="fas fa-map-marker-alt"></i>' }) }).addTo(map);
+
+            // You may also want to pan or zoom to the clicked location
+            map.setView([lat, lon], 17);
+        } else {
+            console.error('Invalid or missing latitude and longitude values.');
+        }
+    } catch (error) {
+        console.error('Error parsing GeoJSON:', error);
+    }
+}
 
 
     function openModal() {

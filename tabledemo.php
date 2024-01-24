@@ -17,18 +17,6 @@ $user = mysqli_fetch_assoc($result);
 $userN = $_SESSION['username'];
 
 
-// -----------------
-// $sql = "SELECT * FROM locations  WHERE username = '$username'";
-// $result = $db->query($sql);
-
-// $locations = array();
-
-// if ($result->num_rows > 0) {
-//     while ($row = $result->fetch_assoc()) {
-//         $locations[] = $row;
-//     }
-// }
-
 //  ===================================================for database connection for search engine================================================
 
 if ($db->connect_error) {
@@ -52,80 +40,45 @@ if ($result->num_rows > 0) {
     }
 }
 
-// echo json_encode($data);
-// $conn->close();
-//  ===================================================for database connection for search engine================================================
-// databasse coonect for table
-
-
-// // Get table columns dynamically
-// $tableName = "plot_data";
-// $columnsQuery = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '$tableName'";
-// $columnsResult = $db->query($columnsQuery);
-
-// // SQL query to retrieve data
-// $dataQuery = "SELECT * FROM $tableName";
-// $dataResult = $db->query($dataQuery);
-
-// postgresssssssssssssssssss
 
 
 
 // Create connection
-$conn = pg_connect("host =database-1.c01x1jtcm1ms.ap-south-1.rds.amazonaws.com port = 5432 dbname = pmcdb user = postgres password = anup12345");
+$conn = new PDO("pgsql:host =database-1.c01x1jtcm1ms.ap-south-1.rds.amazonaws.com port = 5432 dbname = geopulse1 user = postgres password = anup12345");
 
 // Check connection
 if (!$conn) {
     die("Connection failed: " . pg_last_error());
 }
+// $tableName = "plu_data";
 
-$tableName = "Man_Final";
-$columnsQuery = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '$tableName' 
-AND COLUMN_NAME NOT IN ('fid', 'geom','Shape_Leng')";
-$columnsResult = pg_query($conn, $columnsQuery);
-
-if (!$columnsResult) {
+// $tableName = "Man_Final";
+$columnsQuery = $conn->prepare("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '$tableName' 
+AND COLUMN_NAME NOT IN ('fid', 'geom','Shape_Leng')");
+$columnsQuery-> execute();
+// echo $columnsQuery;
+if (!$columnsQuery) {
     die("Error fetching columns: " . pg_last_error($conn));
 }
+$columns = $columnsQuery->fetchAll(PDO::FETCH_COLUMN);
+
+// Construct a comma-separated string of column names
+$columnNames = implode(', ', array_map(function($column) {
+    return "\"$column\"";
+}, $columns));
+// Fetch rows using the specified columns
+// $rowsQuery = $conn->prepare("SELECT $columnNames FROM \"Man_Final\"");
+$limit = 10000; // Change this to the number of rows you want to retrieve
+
+$rowsQuery = $conn->prepare("SELECT $columnNames FROM \"plu_data\" LIMIT :limit");
+$rowsQuery->bindParam(':limit', $limit, PDO::PARAM_INT);
+$rowsQuery->execute();
+$rows = $rowsQuery->fetchAll(PDO::FETCH_ASSOC);
 
 
-// $dataQuery = "SELECT * FROM \"Man_Final\"";
-// $dataResult = pg_query($conn, $dataQuery);
-
-
-// $dataQuery = 'SELECT COLUMN_NAME FROM "Man_Final" AND COLUMN_NAME NOT IN ("fid", "geom")';
-// $dataResult = pg_query($conn, $cdataQuery);
-
-//final...................
-$dataQuery = 'SELECT "OBJECTID", "Area_Ha", "Area_acre", "Length_m","Area_Sq_m","Village","Old_Gut","Label_name","TALUKA","Broad_LU","Landuse","Plot_no" FROM "Man_Final"';
-$dataResult = pg_query($conn, $dataQuery);
-// .......................
-
-
-
-// pie chart
-
-// Fetch data from the result set
-$data = pg_fetch_all($dataResult);
-
-// Process data (assuming 'Label_name' for labels and 'Area_Ha' for values)
-$labels = array_column($data, 'Broad_LU');
-$values = array_column($data, 'Area_Ha');
-
-// Convert data to JSON format for use in JavaScript
-$labels_json = json_encode($labels);
-$values_json = json_encode($values);
-
-
+// Close the cursor to free up resources
+// $rowsQuery->closeCursor();
 ?>
-
-
-
-
-
-
-
-
 
 <!DOCTYPE html>
 <html lang="en">
@@ -139,12 +92,7 @@ $values_json = json_encode($values);
     <!-- <link rel="icon" type="image/x-icon" href="images/logo1.png"> -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.0/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css">
-
+    
 
     <!-- BOOTSTRAP only -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -158,40 +106,8 @@ $values_json = json_encode($values);
     <link rel="stylesheet" href="libs/jquery-ui-1.12.1/jquery-ui.css">
     <script src="libs/jquery-ui-1.12.1/external/jquery/jquery.js"></script>
     <script src="libs/jquery-ui-1.12.1/jquery-ui.js"></script>
-<!-- qrcode -->
-    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js"></script>
 
-    <!-- Leaflet -->
-
-    <link rel="stylesheet" href="libs/leaflet/leaflet.css" />
-    <script src="libs/leaflet/leaflet.js"></script>
-
-    <!-- ZoomBar & slider-->
-    <script src="libs/L.Control.ZoomBar-master/src/L.Control.ZoomBar.js"></script>
-    <link rel="stylesheet" href="libs/L.Control.ZoomBar-master/src/L.Control.ZoomBar.css" />
-    <script src="libs/Leaflet.zoomslider-master/src/L.Control.Zoomslider.js"></script>
-    <link rel="stylesheet" href="libs/Leaflet.zoomslider-master/src/L.Control.Zoomslider.css" />
-
-    <!-- MousePosition -->
-    <script src="libs/Leaflet.MousePosition-master/src/L.Control.MousePosition.js"></script>
-    <link rel="stylesheet" href="libs/Leaflet.MousePosition-master/src/L.Control.MousePosition.css" />
-
-    <!-- line-measure -->
-    <link rel="stylesheet" href="libs/polyline-measure/line-measure.css" />
-    <script src="libs/polyline-measure/line-measure.js"></script>
-    <link rel="stylesheet" href="libs/leaflet-measure-master/leaflet-measure.css" />
-    <script src="libs/leaflet-measure-master/leaflet-measure.js"></script>
-    <script src="libs/feat.js"></script>
-
-
-    <!-- draw -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.css" />
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.2/leaflet.draw.js"></script> -->
-
-    <!-- 
-  <link rel="stylesheet" href="libs/leaflet-draw-control.css"> -->
-    <script src="libs/leaflet-draw-control.js"></script>
-
+   
 
     <!-- github -->
     <script src="https://kartena.github.io/Proj4Leaflet/lib/proj4-compressed.js"></script>
@@ -199,39 +115,16 @@ $values_json = json_encode($values);
 
 
 
-    <!-- legend -->
-
-    <link rel="stylesheet" href="libs/leaflet-wms-legend/leaflet.wmslegend.css" />
-    <script src="libs/leaflet-wms-legend/leaflet.wmslegend.js"></script>
-
-
     <!-- csslink -->
     <link rel="stylesheet" href="mystyle1.css">
 
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@10"></script>
 
-    <!-- html2pdfcdn -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
-        integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.0/jspdf.umd.min.js"></script> -->
-
-    <script src="libs/leaflet-image.js"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.3.1/jspdf.umd.min.js"></script>
 
     <!-- fontawsome -->
     <link rel="stylesheet" href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css">
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-  <!-- QRcode -->
-  <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
-
-   <!-- Include Plotly.js library -->
-   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
 
 <!-- DataTables CSS -->
@@ -251,10 +144,6 @@ $values_json = json_encode($values);
 <!-- DataTables Column Filter JS -->
 <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/colreorder/1.5.4/js/dataTables.colReorder.min.js"></script>
 
-    <!--Bookmarks-->
-
-    <!-- <script src="libs/bookmark.js"></script> -->
-    <!-- <link href="libs/leaflet.bookmark.css" rel="stylesheet"> -->
 
     <style>
     /* CSS Styles for the Location Table */
@@ -263,81 +152,6 @@ $values_json = json_encode($values);
         width:25%;
         overflow-y:scroll;
     }
-    #locationTable {
-        width: 100%;
-        border-collapse: collapse;
-        color: #333;
-        border: none;
-        /* Font color for table elements */
-    }
-
-    /* #locationTable th, */
-    #locationTable td a {
-        padding: 2px;
-        text-align: left;
-        font-size: 12px;
-        /* border-bottom: 1px solid #ddd; */
-
-    }
-
-    #locationTable td a:hover {
-        color: greenyellow;
-
-    }
-
-   
-    #locationTable a {
-        color: whitesmoke;
-        /* Font color for links */
-        text-decoration: none;
-    }
-
-    .deleteBtn {
-        padding: 5px 10px;
-        /* background-color: #dc3545; */
-        background: transparent;
-        color: #fff;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-left: 20px;
-    }
-
-    .deleteBtn:hover {
-       color: #c82333;
-    }
-    
-    .table-wrapper {
-        width: 200px;
-    max-height: 200px; /* Adjust the desired height as needed */
-    overflow-y: auto;
-}
-
-    .my-custom-class {
-        padding: 5px;
-        font-size: 10px;
-    }
-
-    .my-success-popup-class {
-        padding: 10px;
-        font-size: 8px;
-    }
-    .my-custom-class1 {
-        padding: 2px;
-        font-size: 10px;
-    }
-
-    .my-success-popup-class1{
-        padding: 5px;
-        font-size: 8px;
-    }
-
-    .my-title-class{
-            padding-top: 10px;
-            font-weight: bold;
-            font-size: 15px;
-            color: #004aad;
-        }
 
  /* table  */
  .content-container {        
@@ -350,7 +164,7 @@ $values_json = json_encode($values);
             box-shadow: 10px 10px 8px rgba(0, 0, 0, 0.1);
     
             max-width: 100%;
-            max-height:700px; /* Set a fixed height for the container */
+            max-height: 78vh; /* Set a fixed height for the container */
             overflow-y: auto; /* Enable vertical scrolling */
         }
         table {
@@ -358,6 +172,8 @@ $values_json = json_encode($values);
             width: 100%; /* Make the table fill the container */
             border-collapse: collapse;
         }
+
+        
         thead {
             
             background-color: #343a40; /* Header background color */
@@ -375,7 +191,7 @@ $values_json = json_encode($values);
     </style>
 </head>
 
-<body class="">
+<body class="overflow-hidden">
     <div id="wrapper">
 
         <aside id="sidebar-wrapper">
@@ -401,20 +217,6 @@ $values_json = json_encode($values);
                 </li>
 
 
-
-                <li>
-                    <!-- <div class=""> -->
-                        <a class="fs-6 px-3 "style="color:#dddddd;"  href="index.php"><i class="fa-solid fa-house"></i>   Dashboard</a>
-                    <!-- </div> -->
-                </li>
-
-                <li>
-                    <!-- <div class=""> -->
-                        <a class="fs-6 px-3 " style="color:#dddddd;" href="chart.php"><i class="fas fa-chart-line"></i>   Statistics </a>
-                    <!-- </div> -->
-                </li>
-
-                <!-- <hr class="text-light mx-3"> -->
                     <!-- *************************prompt ************** -->
 
                
@@ -451,49 +253,46 @@ $values_json = json_encode($values);
         </div>
 
         <section id="content-wrapper">
-            <div>
-            <h4 class="fw-bold px-4 pt-4"  style="color:#343a40;">Chart:</h4>
-
-                <div id="pie-chart" style="width: 80%; padding:0 10%; height: 500px;"></div>
-            </div>
-                <!-- <hr> -->
+          
             <div>
                 <h4 class="fw-bold  p-4" style="color:#343a40;">Plot No. Details</h4>
-                                            <div class="content-container px-2 pb-4">
+                                            <div class="content-container">
                                 
                                             <div class="table-container p-3">
-                                            <table class="dataTable p-2 " border="1">
+                                          
+                                          
+                                            <table class="dataTable p-3 "id="myDataTable" border="1">
                             <thead>
                                 <tr>
                                     <?php
-                                    $columnNames = [];
-                                    while ($column = pg_fetch_assoc($columnsResult)) {
-                                        $columnName = $column['column_name'];
-                                        $columnNames[] = $columnName;
-                                        echo "<th class='columnFilter autocomplete' data-column='$columnName' onclick='sortTable(\"$columnName\")'>$columnName</th>";
-                                    }
-                                    ?>
+                                    // Output table header with column names
+                                    foreach ($columns as $column) {
+                                        echo "<th>$column</th>";
+                                        // echo "</tr>";
+                                    }                   ?>
                                 </tr>
                                
                             </thead> 
 
                                     <tbody>
-                                <?php
-                                if ($dataResult) {
-                                    while ($row = pg_fetch_assoc($dataResult)) {
-                                        echo "<tr>";
-                                        foreach ($row as $value) {
-                                            echo "<td>" . $value . "</td>";
-                                        }
-                                        echo "</tr>";
-                                    }
-                                } else {
-                                    echo "<tr><td colspan='100%'>No data available</td></tr>";
-                                }
-                                ?>
+                                    <?php
+                                        // Output table rows with data
+                                        foreach ($rows as $row) {
+                                            echo "<tr>";
+                                            foreach ($row as $value) {
+                                                echo "<td>$value</td>";
+                                            }
+                                            echo "</tr>";
+        }
+                                    ?>          
                             </tbody>
+                         
+
                         </table>
-                            </div>
+
+
+
+                                                </div>
 
 
 
@@ -537,10 +336,46 @@ $values_json = json_encode($values);
         }
     }
    
+///datatable.............
+    // $(document).ready(function () {
+    //         var table = $('.dataTable').DataTable();
+
+    //         $('.columnFilter').on('input', function () {
+    //             var column = $(this).data('column');
+    //             table.column(column).search($(this).val()).draw();
+    //         });
+
+    //     })
     $(document).ready(function () {
-    var table = $('.dataTable').DataTable({
+    // var table = $('.dataTable').DataTable({
+    //     colReorder: true, // Enable the Column Reorder extension
+    //     dom: 'Rlfrtip', // Include the Column Reorder tools
+    //     initComplete: function () {
+    //         // Initialize the column filters
+    //         this.api().columns().every(function () {
+    //             var column = this;
+    //             var select = $('<select><option value=""></option></select>')
+    //                 .appendTo($(column.header()))
+    //                 .on('change', function () {
+    //                     var val = $.fn.dataTable.util.escapeRegex(
+    //                         $(this).val()
+    //                     );
+    //                     column.search(val ? '^' + val + '$' : '', true, false).draw();
+    //                 });
+
+    //             column.data().unique().sort().each(function (d, j) {
+    //                 select.append('<option value="' + d + '">' + d + '</option>');
+    //             });
+    //         });
+    //     }
+    // });
+
+    var table = $('#myDataTable').DataTable({
         colReorder: true, // Enable the Column Reorder extension
         dom: 'Rlfrtip', // Include the Column Reorder tools
+        lengthMenu: [ [10, 25, 50, 100, -1], [10, 25, 50, 100, "All"] ], // Set the display length options
+        pageLength: 10, // Set the default display length
+
         initComplete: function () {
             // Initialize the column filters
             this.api().columns().every(function () {
@@ -561,6 +396,7 @@ $values_json = json_encode($values);
         }
     });
 
+
     // Handle input change for individual column filtering
     $('.columnFilter').on('input', function () {
         var column = $(this).data('column');
@@ -570,35 +406,11 @@ $values_json = json_encode($values);
 
 
 
- // Use the processed data in Plotly.js
- var labels = <?php echo $labels_json; ?>;
-    var values = <?php echo $values_json; ?>;
-
-
-    // var colors = ['#ffe711', '#b6b9b8', '#80f3bf', '#ff962e', '#17d0e4', '#fdef82', '#408cbf', '#f5699c','#ff962e','#58ecc5','#bcccdb'];
-    var colors = ['#ffe711', '#17d0e4', '', '', '', '', '', '','','#4f82b0','#84ebb9','#58ecc5','','','#f5699c','','','#bcccdb'];
-
-
-    // Create pie chart using Plotly
-    var data = [{
-        values: values,
-        labels: labels,
-        type: 'pie',
-        marker: {
-            colors: colors  // Set custom colors for pie slices
-        }
-    }];
-     // Define custom colors for pie chart slices
-
-     var layout = {
-        // title: 'Pie Chart Example',
-        paper_bgcolor: 'transparent'  // Set background color
-    };
-
-    Plotly.newPlot('pie-chart', data, layout);
-
-
     </script>
+
+
+
+
 
 </body>
 
